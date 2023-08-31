@@ -1,18 +1,21 @@
-const width = 64
-const height = 64
+const width  = 64;
+const height = width;
+// 5x5 to be able to actually reproduce the entire image based on the time
 const startTime = new Date(2023,0,1);
-const endTime = new Date(2024,0,1);
+const endTime = new Date(2033,0,1);
 const colors = [
     // r,  g,  b,  a
     [  0,  0,  0,255], // black
-    [128,128,128,255], // white
+    // [ 64, 64, 64,255], // grey 1/4
+    // [128,128,128,255], // grey 1/2
+    // [192,192,192,255], // grey 3/4
     [255,255,255,255], // white
     [255,  0,  0,255], // red
     [  0,255,  0,255], // green
-    [255,255,  0,255], // yellow
     [  0,  0,255,255], // blue
-    [255,  0,255,255], // magenta
-    [  0,255,255,255], // cyan
+    // [255,255,  0,255], // yellow
+    // [255,  0,255,255], // magenta
+    // [  0,255,255,255], // cyan
   ];
 
 function percentElapsed() {
@@ -44,49 +47,51 @@ function getClosestColor(rgba){
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    const generatedImage = document.getElementById("generated-image");
-    const imageInput = document.getElementById("image-input");
+    document.getElementById("timeSpanText").textContent = `This Canvas is time constrained to display all possible values between ${startTime.toDateString()} and ${endTime.toDateString()}`;
 
-    document.getElementById("timeSpanText").textContent = `This covers ${startTime.toDateString()} to ${endTime.toDateString()}`;
-
-    document.getElementById("searchSpaceText").textContent = `This image is ${width}x${height} with ${colors.length} colors. This means there are ${formatToScientificNotation(power(colors.length, width*height).toString(), 5)} possible images that the Canvas will show at some point during its run time.`;
+    const totalImages = power(colors.length, width*height);
+    const totalSeconds = (endTime-startTime)/1000;
+    document.getElementById("searchSpaceText").textContent = `This image is ${width}x${height} with ${colors.length} colors. 
+    This means there are ${formatToScientificNotation(totalImages.toString(), 5)} possible images that the Canvas will show at some point during its run time. 
+    It will show ${formatToScientificNotation((totalImages/BigInt(totalSeconds)).toString(), 5)} images per second to keep that pace. 
+    For reference, there are between 1e78 to 1e82 atoms in the known universe.`;
 
     // Generate and update the existing image at a set interval
-    generatedImage.src = "data:image/png;base64," + generateImage(percentElapsed());
-    console.log(`2^(255*255) = ${power(2,255*255)}`);
+    document.getElementById("generated-image").src = "data:image/png;base64," + generateImage(percentElapsed());
     let lastFrame = new Date();
     setInterval(() => {
-        var percent = percentElapsed();
-        generatedImage.src = "data:image/png;base64," + generateImage(percent);
+        document.getElementById("generated-image").src = "data:image/png;base64," + generateImage(percentElapsed());
 
         const thisFrame = new Date();
         const msSinceLastFrame = thisFrame - lastFrame;
         const fps = 1000/msSinceLastFrame;
 
-        document.getElementById("fpsLabel").textContent = `${fps.toFixed(0)} fps`;
-        console.log(`Calculated image from completion ${percent} in ${msSinceLastFrame} ms (${fps.toFixed(0)} fps)`);
+        document.getElementById("fpsLabel").textContent = `${fps.toFixed(2)} fps`;
         lastFrame = thisFrame;
-    }, 1000/30);
+    }, 1000/20); // rate limit because it hurts to look at at full speed
 
     // Handle image upload
-    imageInput.addEventListener("change", function (event) {
+    document.getElementById("image-input").addEventListener("input", function (event) {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onload = function (e) {
                 const img = new Image();
                 img.onload = function(){
-                    console.log("revising image...");
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-                    const context = canvas.getContext('2d');
-                    context.drawImage(img, 0, 0, width, height);
-                    var originalImgData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                    // hide user content
+                    document.getElementById("userContentContainer").setAttribute("hidden","hidden");
                     
-                    const imageData = context.createImageData(width, height);
+                    console.trace("revising image...");
+                    const userImageCanvas = document.createElement('canvas');
+                    userImageCanvas.width = width;
+                    userImageCanvas.height = height;
+                    const userImageContext = userImageCanvas.getContext('2d');
+                    userImageContext.drawImage(img, 0, 0, width, height);
+                    var originalImgData = userImageContext.getImageData(0, 0, userImageCanvas.width, userImageCanvas.height).data;
+                    
+                    const imageData = userImageContext.createImageData(width, height);
                     const data = imageData.data;
-                    console.log(`data length: ${data.length}`);
+
                     for(let i = 0;i<data.length;i+=4){
                         const newColor = getClosestColor([originalImgData[i+0],originalImgData[i+1],originalImgData[i+2],originalImgData[i+3]])
                         data[i+0] = newColor[0];
@@ -94,14 +99,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         data[i+2] = newColor[2];
                         data[i+3] = newColor[3];
                     }
-                    context.putImageData(imageData, 0, 0);
+                    userImageContext.putImageData(imageData, 0, 0);
 
-                    console.log("loading into web page...");
-                    document.getElementById("userImage").src = "data:image/png;base64," + canvas.toDataURL("image/png").split(",")[1]; // You can change the format as needed
-                    document.getElementById("userImage").removeAttribute("hidden");
+                    console.trace("loading into web page...");
+                    document.getElementById("userImage").src = "data:image/png;base64," + userImageCanvas.toDataURL("image/png").split(",")[1]; // You can change the format as needed
                     document.getElementById("userImageLabel").textContent = `This image will appear at ${predictTime(data)}`;
-                    document.getElementById("userImageLabel").removeAttribute("hidden");
-                    console.log("done...");
+                    console.trace("done...");
+
+                    // show user content
+                    document.getElementById("userContentContainer").removeAttribute("hidden");
                 }
                 img.src = e.target.result;
             };
@@ -127,6 +133,7 @@ function power(base, exponent) {
 
     return result;
 }
+
 function formatToScientificNotation(numberStr, significantDigits = 2) {
     let exponent = 0;
     let coefficient = numberStr;
@@ -162,10 +169,28 @@ function formatToScientificNotation(numberStr, significantDigits = 2) {
     return formattedNumber;
 }
 
+function pixelToProgress(index, color){
+    const weight = Math.pow(colors.length, index+1);
+    if(weight === Infinity)
+        return 0;
+    const colorIdx = colors.findIndex(c => JSON.stringify(c) === JSON.stringify(color));
+    const value = colorIdx / weight;
+    return value;
+}
+
+function progressToPixel(index, progress){
+    const weight = Math.pow(colors.length, index+1);
+    if(weight === Infinity)
+        return colors[Math.floor(Math.random() * colors.length)]; // :)
+    const value = progress * weight % colors.length;
+    const colorIdx = Math.floor(value);
+    return colors[colorIdx];
+}
+
 function predictTime(imageData){
     let progress = 0;
-    const pixels = Math.floor(imageData.length/4); // imageData.width * imageData.height; //
-    for(let pixel=pixels-1;pixel>=0;pixel--){
+    const pixels = Math.floor(imageData.length/4);
+    for(let pixel = 0; pixel < pixels; pixel++){
         const dataStart = pixel * 4;
         const color = [
             imageData[dataStart+0],
@@ -173,16 +198,14 @@ function predictTime(imageData){
             imageData[dataStart+2],
             imageData[dataStart+3],
         ]
-        const index = colors.findIndex(c => JSON.stringify(c) === JSON.stringify(color))
-        progress += index;
-        progress /= colors.length;
+        progress += pixelToProgress(pixel, color);
     }
+    console.log(`User image occurs at progress ${progress}`);
     const length = endTime - startTime;
     return new Date(startTime.getTime() + (length * progress));
 }
 
 function generateImage(progress) {
-    // Example: Generating a simple image with a base64-encoded PNG
     const canvas = document.createElement("canvas");
     canvas.width  = width;
     canvas.height = height;
@@ -198,11 +221,8 @@ function generateImage(progress) {
         const data = imageData.data;
         for(let y = 0; y < canvas.height; y++) {
             for(let x = 0; x < canvas.width; x++) {
-                progress *= colors.length;
-                var colorIndex = Math.floor(progress);
-                progress -= colorIndex;
-                var i = (y * canvas.width) + x;
-                let color = colors[colorIndex];
+                const i = (y * canvas.width) + x;
+                const color = progressToPixel(i, progress);
                 data[i*4 + 0] = color[0];
                 data[i*4 + 1] = color[1];
                 data[i*4 + 2] = color[2];
