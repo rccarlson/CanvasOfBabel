@@ -22,36 +22,25 @@ function percentElapsed() {
     return percentage;
   }
 function getClosestColor(rgba){
-    const sortedColors = colors.sort((colorA, colorB) => {
-        const rA = colorA[0];
-        const gA = colorA[1];
-        const bA = colorA[2];
-        const aA = colorA[3];
-        
-        const rB = colorB[0];
-        const gB = colorB[1];
-        const bB = colorB[2];
-        const aB = colorB[3];
-        
+    const sortedColors = [...colors];
+    sortedColors.sort((colorA, colorB) => {
         const distanceA = Math.sqrt(
-            Math.pow(rA - rgba[0], 2) +
-            Math.pow(gA - rgba[1], 2) +
-            Math.pow(bA - rgba[2], 2) +
-            Math.pow(aA - rgba[3], 2)
+            Math.pow(colorA[0] - rgba[0], 2) +
+            Math.pow(colorA[1] - rgba[1], 2) +
+            Math.pow(colorA[2] - rgba[2], 2) +
+            Math.pow(colorA[3] - rgba[3], 2)
         );
         
         const distanceB = Math.sqrt(
-            Math.pow(rB - rgba[0], 2) +
-            Math.pow(gB - rgba[1], 2) +
-            Math.pow(bB - rgba[2], 2) +
-            Math.pow(aB - rgba[3], 2)
+            Math.pow(colorB[0] - rgba[0], 2) +
+            Math.pow(colorB[1] - rgba[1], 2) +
+            Math.pow(colorB[2] - rgba[2], 2) +
+            Math.pow(colorB[3] - rgba[3], 2)
         );
         
         return distanceA - distanceB;
     });
-
-    const closestColor = sortedColors[0];
-    return closestColor;
+    return sortedColors[0];
 }
 
 document.addEventListener("DOMContentLoaded", function () {
