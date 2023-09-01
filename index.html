@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canvas of Babel</title>
     <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        fetch('README.md')
+          .then(response => response.text())
+          .then(markdownText => document.getElementById('readmeText').innerHTML = marked.parse(markdownText))
+          .catch(error => console.error('Error fetching Markdown file:', error));
+    </script>
 </head>
 <body>
     <div>
-        <h2>Canvas of Babel</h2>
+        <div id="readmeText"></div>
         <div id="image-container">
             <img id="generated-image" width="255">
             <label id="fpsLabel"></label>
@@ -18,7 +25,7 @@
         <p id="searchSpaceText"></p>
 
         <p>
-            <p>Want to see when your image will come up? Upload the image below to find out <i>exactly</i> when your image will appear</p>
+            <p>Upload an image below to find out <i>exactly</i> when your image will appear</p>
             <input type="file" id="image-input" accept="image/*">
             <p id="userContentContainer" hidden>
                 <label>Image has been color-shifted to match the Canvas's color palette</label>
